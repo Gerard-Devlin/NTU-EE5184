@@ -10,29 +10,32 @@ from torchvision import transforms
 class SimpleNN(nn.Module):
     def __init__(self):
         super(SimpleNN, self).__init__()
-        self.model = nn.Sequential(
-            nn.Flatten(),                                 # 展平 28x28 图像
-            nn.Linear(28*28, 512),                        # 输入层
-            nn.BatchNorm1d(512),                          # 批归一化
-            nn.LeakyReLU(0.1),                            # LeakyReLU 防止死神经元
-            nn.Dropout(0.3),                              # Dropout 防止过拟合
-
-            nn.Linear(512, 256),                          # 中间层1
-            nn.BatchNorm1d(256),
+        self.conv = nn.Sequential(
+            nn.Conv2d(1, 32, kernel_size=3, padding=1),   # 28x28 → 28x28
+            nn.BatchNorm2d(32),
             nn.LeakyReLU(0.1),
-            nn.Dropout(0.3),
+            nn.MaxPool2d(2),                              # 28x28 → 14x14
 
-            nn.Linear(256, 128),                          # 中间层2
+            nn.Conv2d(32, 64, kernel_size=3, padding=1),  # 14x14 → 14x14
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU(0.1),
+            nn.MaxPool2d(2),                              # 14x14 → 7x7
+        )
+
+        self.fc = nn.Sequential(
+            nn.Flatten(),                                 # 展平为 64 * 7 * 7
+            nn.Linear(64 * 7 * 7, 128),
             nn.BatchNorm1d(128),
             nn.LeakyReLU(0.1),
             nn.Dropout(0.3),
 
-            nn.Linear(128, 10),                           # 输出层
+            nn.Linear(128, 10)                            # 输出层
         )
 
     def forward(self, x):
-        return self.model(x)
-
+        x = self.conv(x)
+        x = self.fc(x)
+        return x
 # ======== 2. 图像预处理函数 ========= #
 def preprocess_image(img):
     img = img.convert("L")  # 转换为灰度图 非常重要
@@ -41,7 +44,7 @@ def preprocess_image(img):
     # 归一化参数：根据 MNIST 数据集的统计信息
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.5,), (0.5,))  # 使用 MNIST 数据集的标准化参数
+        transforms.Normalize((0.1307,), (0.3081,))  # 使用 MNIST 数据集的标准化参数
     ])
     return transform(img).unsqueeze(0)
 
